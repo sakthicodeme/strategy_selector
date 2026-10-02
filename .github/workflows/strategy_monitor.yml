@@ -1,0 +1,53 @@
+name: ETHUSD 5m Strategy Monitor & Telegram Alert
+
+on:
+  schedule:
+    # Runs every 5 minutes automatically 24x7
+    - cron: '*/5 * * * *'
+  workflow_dispatch: # Allows manual trigger from GitHub web UI
+  push:
+    branches: [ main ]
+
+jobs:
+  monitor-and-alert:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Restore Trend State Cache
+        uses: actions/cache@v4
+        with:
+          path: state.json
+          key: eth-trend-state-${{ github.run_id }}
+          restore-keys: |
+            eth-trend-state-
+
+      - name: Run Strategy Selection & Telegram Dispatch
+        env:
+          EXCHANGE_ENV: ${{ secrets.EXCHANGE_ENV || 'india' }}
+          DELTA_BASE_URL: ${{ secrets.DELTA_BASE_URL || 'https://api.india.delta.exchange' }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          python main.py --send-telegram --alert-on-trend-change-only --output console
+
+      - name: Save Updated Trend State Cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: state.json
+          key: eth-trend-state-${{ github.run_id }}

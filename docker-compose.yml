@@ -1,0 +1,10 @@
+version: '3.8'
+
+services:
+  eth_strategy_selector:
+    build: .
+    restart: always
+    env_file:
+      - .env
+    volumes:
+      - ./state.json:/app/state.json
